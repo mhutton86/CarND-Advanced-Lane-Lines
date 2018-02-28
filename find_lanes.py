@@ -5,20 +5,16 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
 import cv2
-
+from plot_helper import *
 from moviepy.editor import VideoFileClip
-
 from lane_tracker import LaneTracker
 
 # camera calibration variables
-from plot_helper import plot_image
-
 calibration_image_dir_pattern = './camera_cal/calibration*.jpg'
 chessboard_inside_corners = (9, 6)
-M = None
 cal = {}
 
-output_mode = 'image'
+# output_mode = 'image'
 
 output_mode = 'video'
 
@@ -71,6 +67,9 @@ def calibrate_camera():
     cal['rvecs'] = rvecs
     cal['tvecs'] = tvecs
 
+    test_image = load_image('camera_cal/calibration3.jpg')
+    plot_2_images(test_image, cv2.undistort(test_image, cal['mtx'], cal['dist'], None, cal['mtx']))
+
 
 # calibrate camera, store into pickle for easy access
 pickle_file_name = 'objs.pkl'
@@ -83,25 +82,32 @@ else:
     with open(pickle_file_name, 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump(cal, f)
 
-tracker = LaneTracker(cal)
-
 #  First load a single image and run through pipeline
 if output_mode is 'image':
-    # image = load_image("C:\\Users\\mark\\Pictures\\vlcsnap-error655.png")
-    image = load_image('test_images/test5.jpg')
-    # image = load_image('test_images/straight_lines1.jpg')
-    output = tracker.handle_frame(image)
-    plot_image(output)
-    plt.show()
+
+    # image_paths = glob.glob('test_images/test3.jpg')
+    image_paths = glob.glob('test_images/*.jpg')
+
+    for idx, image_path in enumerate(image_paths):
+        tracker = LaneTracker(cal)
+
+        image = load_image(image_path)
+        output = tracker.handle_frame(image)
+
+        path = 'output_images/' + str(idx) + '.jpg'
+        mpimg.imsave(path, output)
+
+        # plot_image(output)
+        # plt.show()
 
 elif output_mode is 'video':
+    tracker = LaneTracker(cal)
     output_video = 'output_video/output.mp4'
     ## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
     ## To do so add .subclip(start_second,end_second) to the end of the line below
     ## Where start_second and end_second are integer values representing the start and end of the subclip
     ## You may also uncomment the following line for a subclip of the first 5 seconds
     # clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
-    # clip1 = VideoFileClip("challenge_video.mp4").subclip(0, 5)
-    clip1 = VideoFileClip("project_video.mp4").subclip(20, 25)
+    clip1 = VideoFileClip("project_video.mp4")
     white_clip = clip1.fl_image(tracker.handle_frame)  # NOTE: this function expects color images!!
     white_clip.write_videofile(output_video, audio=False)
